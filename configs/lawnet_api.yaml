@@ -1,0 +1,21 @@
+law-search-api:
+  url: https://example.com/api
+  method: POST
+  params:
+    keyword: null
+    lan: 1
+    token: 0=pZek9EUTBNRGszTnpneU5qWXlNRFl5Tm4xN05ETTFOVFkwTVgxN01IMDZX
+    secretkey: ==pRek5UVTJOREZkVzNSMVlXNTBiM1IwYVYxYk1GMWJNakF5TkM4d01pOHlNU0F3Tnpvek5qb3lNbDFiT1RNeU5EZzVRVFl0TWpVelJTMDBPVVV5TFRoQ1FrSXRORFkxTkVFeU1ERTFOVVEyWFE9PQV3
+  headers:
+    Content-Type: application/json
+  body:
+    page: 1
+    keyword: null
+    lan: 1
+    match: false
+    matchTemp: false
+    type: -1
+    field: 19
+    status: 
+    bday: 21/02/1944
+    eday: 21/02/2024
