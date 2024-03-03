@@ -1,15 +1,16 @@
+import datetime
 import multiprocessing
 import re
 import time
-from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import click
 import requests
 import yaml
 from tqdm import tqdm
 
-from rest_api.schemas.item import *
+from rest_api.schemas.item import (LawFieldItem, LawItem, LawOrganizationItem,
+                                   LawQuestionAnswerPairItem, LawStatusItem)
 from utils.logger import Logger
 from utils.save_file import save_file
 
@@ -21,7 +22,13 @@ class CrawlData:
     Crawl legal documents from lawnet.vn
     """
 
-    def __init__(self, num_workers: int, output_dir: str) -> None:
+    def __init__(
+        self,
+        num_workers: int,
+        output_dir: str,
+        start_date: Union[datetime.datetime, str],
+        end_date: Union[datetime.datetime, str],
+    ) -> None:
         """Initial objects
 
         Args:
@@ -30,51 +37,61 @@ class CrawlData:
         """
         self.num_workers = num_workers
         self.output_dir = output_dir
+        self.start_date = start_date
+        self.end_date = end_date
+        logger.info(f"start_date: {start_date}, end_date: {end_date}")
         with open("configs/lawnet_api.yaml", "r") as file:
             law_config = yaml.safe_load(file)
 
-        logger.info(law_config)
         self.search_law_params = law_config["law-search"]
         self.law_status_params = law_config["law-status"]
         self.law_organization_params = law_config["law-organization"]
         self.law_detail_params = law_config["law-detail"]
         self.list_question_by_lawid_params = law_config["list-question-by-lawid"]
         self.suggest_by_law_params = law_config["suggest-by-law"]
-        self.list_question_ccpl_params = law_config["list-question-ccpl"]
 
     def get_law_documents(self) -> List[LawItem]:
         """Crawl legal documents from lawnet
+
+        Some errors:
+        + HTTPSConnectionPool: some laws does not have questions --> call api --> error (take time because of retrying call)
+        + Api return law with id = 0 with all required fields is None --> error when call convert_raw_to_item
 
         Returns:
             List[LawItem]: list of converted documents
         """
         record_list = []
         law_detail_list = []
+
+        self.search_law_params["body"]["bday"] = str(self.start_date)
+        self.search_law_params["body"]["eday"] = str(self.end_date)
         raw_documents = self.process_request(self.search_law_params)
-        total_items = raw_documents["Data"]["TotalItems"]
-        num_pages = (
-            int(total_items / 20)
-            if total_items % 20 == 0
-            else int(total_items / 20) + 1
-        )
+        if raw_documents:
+            total_items = raw_documents["Data"]["TotalItems"]
+            num_pages = (
+                int(total_items / 20)
+                if total_items % 20 == 0
+                else int(total_items / 20) + 1
+            )
 
-        with multiprocessing.get_context("fork").Pool(
-            processes=self.num_workers
-        ) as pool:
-            for page in tqdm(range(1, num_pages + 1, 1)):
-                law_detail_result = pool.apply_async(
-                    self.get_law_document_by_page, args=(page,)
-                )
-                law_detail_list.append(law_detail_result)
+            with multiprocessing.get_context("fork").Pool(
+                processes=self.num_workers
+            ) as pool:
+                for page in tqdm(range(1, num_pages + 1, 1)):
+                    law_detail_result = pool.apply_async(
+                        self.get_law_document_by_page, args=(page,)
+                    )
 
-            law_detail_list = [
-                record_list.extend(law_detail.get())
-                for law_detail in tqdm(
-                    law_detail_list, total=len(law_detail_list), position=0
-                )
-            ]
+                    law_detail_list.append(law_detail_result)
 
-        logger.info(f"Crawl {len(record_list)} / {total_items} law documents")
+                [
+                    record_list.extend(law_detail.get())
+                    for law_detail in tqdm(
+                        law_detail_list, total=len(law_detail_list), position=0
+                    )
+                ]
+
+            logger.info(f"Crawl {len(record_list)} / {total_items} law documents")
 
         return record_list
 
@@ -89,9 +106,9 @@ class CrawlData:
         """
         self.search_law_params["body"]["page"] = page
         raw_documents = self.process_request(self.search_law_params)
+        new_page_law_list = []
         if raw_documents:
             law_id_list = [law["LawID"] for law in raw_documents["Data"]["Documents"]]
-
             new_page_law_list = [
                 law_detail
                 for id in law_id_list
@@ -107,14 +124,17 @@ class CrawlData:
             List[LawStatusItem]: list of law status
         """
         raw_status_list = self.process_request(self.law_status_params)
-        raw_status_list = [
-            LawStatusItem(
-                law_status["Status_ID"],
-                law_status["Status_Name"],
-                law_status["EntityState"],
-            )
-            for law_status in raw_status_list
-        ]
+        if raw_status_list:
+            raw_status_list = [
+                LawStatusItem(
+                    law_status["Status_ID"],
+                    law_status["Status_Name"],
+                    law_status["EntityState"],
+                )
+                for law_status in raw_status_list
+            ]
+        else:
+            raw_status_list = []
 
         return raw_status_list
 
@@ -125,15 +145,18 @@ class CrawlData:
             List[LawOrganizationItem]: list of organizations
         """
         raw_organization_list = self.process_request(self.law_organization_params)
-        raw_organization_list = [
-            LawOrganizationItem(
-                law_organization["OrgID"],
-                law_organization["OrgName"],
-                law_organization["UuTien"],
-                law_organization["EntityState"],
-            )
-            for law_organization in raw_organization_list
-        ]
+        if raw_organization_list:
+            raw_organization_list = [
+                LawOrganizationItem(
+                    law_organization["OrgID"],
+                    law_organization["OrgName"],
+                    law_organization["UuTien"],
+                    law_organization["EntityState"],
+                )
+                for law_organization in raw_organization_list
+            ]
+        else:
+            raw_organization_list = []
 
         return raw_organization_list
 
@@ -147,16 +170,26 @@ class CrawlData:
             LawItem: a legal document
         """
         law_detail_item = None
+        question_answer_pair_list = []
         law_detail_params = self.law_detail_params
         law_detail_params["params"]["LawID"] = law_id
+
+        list_question_by_lawid_params = self.list_question_by_lawid_params
+        list_question_by_lawid_params["params"]["lawId"] = law_id
+
         # call api
         law_detail = self.process_request(law_detail_params)
+
         if law_detail:
-            law_detail_item = self.convert_raw_to_item(law_detail)
+            question_answer_pair_list = self.get_question_by_law_id(law_id=law_id)
+
+            law_detail_item = self.convert_raw_to_item(
+                law_detail, question_answer_pair_list
+            )
 
         return law_detail_item
 
-    def get_question_by_law_id(self, law_id: int) -> List:
+    def get_question_by_law_id(self, law_id: int) -> List[LawQuestionAnswerPairItem]:
         """Get question corresponding to law id
 
         Args:
@@ -165,11 +198,53 @@ class CrawlData:
         Returns:
             List: list of question corresponding to law
         """
+        question_answer_pair_list = []
+        question_answer_pair_item_list = []
         list_question_by_lawid_params = self.list_question_by_lawid_params
         list_question_by_lawid_params["params"]["lawId"] = law_id
-        result = self.process_request(list_question_by_lawid_params)
 
-        return result
+        # Some laws does not have question -> Connection Error
+        list_question_by_lawid_params["params"]["type"] = 1
+        question_answer_pair_type_1_list = self.process_request(
+            list_question_by_lawid_params
+        )
+
+        # Some laws does not have question -> Connection Error
+        list_question_by_lawid_params["params"]["type"] = 2
+        question_answer_pair_type_2_list = self.process_request(
+            list_question_by_lawid_params
+        )
+
+        if question_answer_pair_type_1_list:
+            for question_answer_pair_type_1 in question_answer_pair_type_1_list:
+                question_answer_pair_list.extend(
+                    [
+                        question_answer
+                        for question_answer in question_answer_pair_type_1[
+                            "listBaiViet"
+                        ]
+                    ]
+                )
+
+        if question_answer_pair_type_2_list:
+            for question_answer_pair_type_2 in question_answer_pair_type_2_list:
+                question_answer_pair_list.extend(
+                    [
+                        question_answer
+                        for question_answer in question_answer_pair_type_2[
+                            "listBaiViet"
+                        ]
+                    ]
+                )
+        if question_answer_pair_list:
+            question_answer_pair_item_list = [
+                LawQuestionAnswerPairItem(
+                    law_id, bai_viet["Title"], "", bai_viet["Url"]
+                )
+                for bai_viet in question_answer_pair_list
+            ]
+
+        return question_answer_pair_item_list
 
     def suggest_law_by_id(self, law_id: int) -> List:
         """Get suggested laws by law id
@@ -187,7 +262,9 @@ class CrawlData:
 
         return result
 
-    def convert_raw_to_item(self, law: Dict) -> LawItem:
+    def convert_raw_to_item(
+        self, law: Dict, question_answer_pair: List[Dict]
+    ) -> LawItem:
         """convert raw raws from lawnet to LawItem
 
         Args:
@@ -197,13 +274,23 @@ class CrawlData:
             LawItem: converted law to save
         """
         try:
+            # logger.info(question_answer_pair)
+            # logger.info(law)
             law_id = law["Document"]["LawID"]
             news_code = law["Document"]["News_Code"]
             subject = law["Document"]["News_Subject"]
             description = law["Document"]["SEO_Description"]
             news_date = law["Document"]["News_Date"]
-            news_effect_date = law["Document"]["News_EffectDate"]
-            news_effect_less = law["Document"]["News_Effectless"]
+            news_effect_date = (
+                effect_date
+                if (effect_date := law["Document"]["News_EffectDate"])
+                else ""
+            )
+            news_effect_less = (
+                effect_less
+                if (effect_less := law["Document"]["News_Effectless"])
+                else ""
+            )
 
             law_fields = law["Document"]["LawFields"]
             law_fields = [
@@ -220,6 +307,12 @@ class CrawlData:
             law_organization_ids = law["Document"]["OrganIDs"]
             law_type = law["Document"]["LawType"]["LawType_Name"]
             content = law.get("ContentVN", "")
+            question_answer_pair_item_list = [
+                LawQuestionAnswerPairItem(
+                    law_id, bai_viet["Title"], "", bai_viet["Url"]
+                )
+                for bai_viet in question_answer_pair
+            ]
 
             law_item = LawItem(
                 law_id,
@@ -231,6 +324,7 @@ class CrawlData:
                 news_effect_less,
                 law_fields,
                 law_organization_ids,
+                question_answer_pair_item_list,
                 law_type,
                 content,
             )
@@ -268,7 +362,7 @@ class CrawlData:
         Returns:
             Any: response of request
         """
-        result = {}
+        result = None
         url = api_config["url"]
         method = api_config["method"]
         params = api_config.get("params", {})
@@ -285,10 +379,8 @@ class CrawlData:
                 result = response.json()
             else:
                 response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            logger.warn(f"Error {response.status_code}")
         except Exception as e:
-            logger.warn(f"{e}")
+            logger.error(f"{e}")
 
         return result
 
@@ -310,8 +402,30 @@ class CrawlData:
     default="crawler/output/law_detail_documents.json",
     help="File to save output of crawled file",
 )
-def run_crawl(num_workers: int = None, output_dir: str = None) -> None:
-    crawl_data = CrawlData(num_workers=num_workers, output_dir=output_dir)
+@click.option(
+    "--start_date",
+    "-sd",
+    default=str(datetime.date(1944, 1, 1)),
+    help="Start date to crawl",
+)
+@click.option(
+    "--end_date",
+    "-ed",
+    default=str(datetime.date.today()),
+    help="File to save output of crawled file",
+)
+def run_crawl(
+    num_workers: int = None,
+    output_dir: str = None,
+    start_date: Union[datetime.datetime, str] = str(datetime.date(1944, 1, 1)),
+    end_date: Union[datetime.datetime, str] = str(datetime.date.today()),
+) -> None:
+    crawl_data = CrawlData(
+        num_workers=num_workers,
+        output_dir=output_dir,
+        start_date=start_date,
+        end_date=end_date,
+    )
     crawl_data()
 
 

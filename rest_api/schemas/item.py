@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
@@ -54,41 +53,11 @@ class LawStatusItem(BaseModel):
         super().__init__(**kwargs)
 
 
-class LawItem(BaseModel):
-    lawId: int  # LawID
-    newsCode: str  # News_Code
-    subject: str  # News_Subject
-    description: str  # SEO_Description
-    newsDate: Optional[date | str]  # News_Date
-    newsEffectDate: Optional[date | str]  # News_EffectDate
-    newsEffectless: Optional[date | str]  # News_Effectless
-    lawfields: List[LawFieldItem]
-    lawOrganizationIds: Optional[List[int] | str]
-    # lawStatus: LawStatusItem
-    lawType: str
-    content: str  # ContentVN
-
-    def __init__(self, *args):
-        # Get a "list" of field names (or key view)
-        field_names = self.__fields__.keys()
-
-        # Combine the field names and args to a dict
-        # using the positions.
-        kwargs = dict(zip(field_names, args))
-
-        super().__init__(**kwargs)
-
-    def convert_to_json(self) -> Dict:
-        self.lawfields = [law_field.dict() for law_field in self.lawfields]
-
-        return self.dict()
-
-
 class LawQuestionAnswerPairItem(BaseModel):
     lawId: int
     question: str
     answerContent: str
-    answerUrl: List
+    answerUrl: str
 
     def __init__(self, *args):
         # Get a "list" of field names (or key view)
@@ -115,3 +84,34 @@ class ArticleItem(BaseModel):
         kwargs = dict(zip(field_names, args))
 
         super().__init__(**kwargs)
+
+
+class LawItem(BaseModel):
+    lawId: int  # LawID
+    newsCode: str  # News_Code
+    subject: str  # News_Subject
+    description: str  # SEO_Description
+    newsDate: Optional[str]  # News_Date
+    newsEffectDate: Optional[str]  # News_EffectDate
+    newsEffectless: Optional[str]  # News_Effectless
+    lawfields: List[LawFieldItem]
+    lawOrganizationIds: Optional[str]
+    list_question_answer_pair: List[LawQuestionAnswerPairItem]
+    # lawStatus: LawStatusItem
+    lawType: str
+    content: str  # ContentVN
+
+    def __init__(self, *args):
+        # Get a "list" of field names (or key view)
+        field_names = self.__fields__.keys()
+
+        # Combine the field names and args to a dict
+        # using the positions.
+        kwargs = dict(zip(field_names, args))
+
+        super().__init__(**kwargs)
+
+    def convert_to_json(self) -> Dict:
+        self.lawfields = [law_field.model_dump() for law_field in self.lawfields]
+
+        return self.model_dump()

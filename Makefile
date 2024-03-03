@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := build
 .PHONY: build quality format clean
 
-CHECK_DIRS := configs rest_api utils crawler
+CHECK_DIRS := configs rest_api utils crawler airflow
 
 build:
 	pip install -e .[all]

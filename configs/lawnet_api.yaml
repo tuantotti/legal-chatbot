@@ -42,16 +42,14 @@ law-detail:
 
 list-question-by-lawid:
   url: https://lawnet.vn/ngan-hang-phap-luat/ApiNHCH/GetListCauHoiByIdVanBan
+  method: GET
   params:
     lawId: 599102
     type: 1 # 1 or 2
 
 suggest-by-law:
   url: https://api.lawnet.vn/GetByLawID
+  method: GET
   params:
     LawID: 82203
     language: VN
-
-list-question-ccpl:
-  url: https://lawnet.vn/ngan-hang-phap-luat/get-cauhoi-ccpl-1411B
-
