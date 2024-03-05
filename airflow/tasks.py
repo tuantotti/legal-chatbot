@@ -3,9 +3,8 @@ from typing import List
 
 from airflow.decorators import task
 from crawler.crawl_document import CrawlData
-from crawler.preprocessing import PreProcessing
 from rest_api.schemas.item import LawItem
-
+from configs.config import settings
 
 @task
 def extract() -> List[LawItem]:
@@ -13,7 +12,7 @@ def extract() -> List[LawItem]:
     today = date.today()
     yesterday = today - timedelta(days=1)
     crawl_data = CrawlData(
-        num_workers=8, start_date=str(yesterday), end_date=str(today)
+        num_workers=settings.NUM_WORKER, start_date=str(yesterday), end_date=str(today)
     )
 
     return crawl_data.get_law_documents()

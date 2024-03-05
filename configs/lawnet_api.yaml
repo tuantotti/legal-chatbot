@@ -4,8 +4,8 @@ law-search:
   params:
     keyword: null
     lan: 1 # language 1 is VN, 2 is EN
-    token: 0=pZek9EUTBNRGszTnpneU5qWXlNRFl5Tm4xN05ETTFOVFkwTVgxN01IMDZX
-    secretkey: ==pRek5UVTJOREZkVzNSMVlXNTBiM1IwYVYxYk1GMWJNakF5TkM4d01pOHlNU0F3Tnpvek5qb3lNbDFiT1RNeU5EZzVRVFl0TWpVelJTMDBPVVV5TFRoQ1FrSXRORFkxTkVFeU1ERTFOVVEyWFE9PQV3
+    token: 0=pZek9EUTFNak0zTURNek16UTBOVFUwTjMxN05ETTFOVFkwTVgxN01IMDZX
+    secretkey: ==pRek5UVTJOREZkVzNSMVlXNTBiM1IwYVYxYk1GMWJNakF5TkM4d015OHdOU0F4TWpvd016bzFNMTFiT1RNeU5EZzVRVFl0TWpVelJTMDBPVVV5TFRoQ1FrSXRORFkxTkVFeU1ERTFOVVEyWFE9PQV3
   headers:
     Content-Type: application/json
   body:
@@ -24,19 +24,19 @@ law-status:
   url: https://api.thuvienphapluat.com//LawStatus/AllLawStatus
   method: POST
   params:
-    token: 0=pZek9EUTBNRGszTnpneU5qWXlNRFl5Tm4xN05ETTFOVFkwTVgxN01IMDZX
+    token: 0=pZek9EUTFNak0zTURNek16UTBOVFUwTjMxN05ETTFOVFkwTVgxN01IMDZX
 
 law-organization:
   url: https://api.thuvienphapluat.com//Organ/AllOrgan
   method: POST
   params:
-    token: 0=pZek9EUTBNRGszTnpneU5qWXlNRFl5Tm4xN05ETTFOVFkwTVgxN01IMDZX
+    token: 0=pZek9EUTFNak0zTURNek16UTBOVFUwTjMxN05ETTFOVFkwTVgxN01IMDZX
 
 law-detail:
   url: https://api.lawnet.vn/document-detail
   method: GET
   params:
-    secretkey: 0=pCZFcxMWJNRjFiTWpBeU5DOHdNaTh5TVNBeE5qb3lNem93TlYxYk9UTXlORGc1UVRZdE1qVXpSUzAwT1VVeUxUaENRa0l0TkRZMU5FRXlNREUxTlVRMlhRPTV3
+    secretkey: ==pRek5UVTJOREZkVzNSMVlXNTBiM1IwYVYxYk1GMWJNakF5TkM4d015OHdOU0F4TWpvd016bzFNMTFiT1RNeU5EZzVRVFl0TWpVelJTMDBPVVV5TFRoQ1FrSXRORFkxTkVFeU1ERTFOVVEyWFE9PQV3
     LawID: 599102
     language: VN
 

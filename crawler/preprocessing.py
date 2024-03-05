@@ -97,7 +97,7 @@ class PreProcessing:
             ]
 
         return articles
-
+    
     def remove_html_tag(self, text: str) -> str:
         """Remove html tags inside text if it exists
 

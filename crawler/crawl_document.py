@@ -9,7 +9,7 @@ import requests
 import yaml
 from tqdm import tqdm
 
-from rest_api.schemas.item import (LawFieldItem, LawItem, LawOrganizationItem,
+from rest_api.schemas.item import (LawItem, LawOrganizationItem,
                                    LawQuestionAnswerPairItem, LawStatusItem)
 from utils.logger import Logger
 from utils.save_file import save_file
@@ -170,22 +170,14 @@ class CrawlData:
             LawItem: a legal document
         """
         law_detail_item = None
-        question_answer_pair_list = []
         law_detail_params = self.law_detail_params
         law_detail_params["params"]["LawID"] = law_id
-
-        list_question_by_lawid_params = self.list_question_by_lawid_params
-        list_question_by_lawid_params["params"]["lawId"] = law_id
 
         # call api
         law_detail = self.process_request(law_detail_params)
 
         if law_detail:
-            question_answer_pair_list = self.get_question_by_law_id(law_id=law_id)
-
-            law_detail_item = self.convert_raw_to_item(
-                law_detail, question_answer_pair_list
-            )
+            law_detail_item = self.convert_raw_to_item(law_detail)
 
         return law_detail_item
 
@@ -262,70 +254,18 @@ class CrawlData:
 
         return result
 
-    def convert_raw_to_item(
-        self, law: Dict, question_answer_pair: List[Dict]
-    ) -> LawItem:
-        """convert raw raws from lawnet to LawItem
-
-        Args:
-            law (Dict): a raw law from website
-
-        Returns:
-            LawItem: converted law to save
-        """
+    def convert_raw_to_item(self, law: Dict) -> LawItem:
         try:
             # logger.info(question_answer_pair)
             # logger.info(law)
             law_id = law["Document"]["LawID"]
             news_code = law["Document"]["News_Code"]
-            subject = law["Document"]["News_Subject"]
-            description = law["Document"]["SEO_Description"]
-            news_date = law["Document"]["News_Date"]
-            news_effect_date = (
-                effect_date
-                if (effect_date := law["Document"]["News_EffectDate"])
-                else ""
-            )
-            news_effect_less = (
-                effect_less
-                if (effect_less := law["Document"]["News_Effectless"])
-                else ""
-            )
-
-            law_fields = law["Document"]["LawFields"]
-            law_fields = [
-                LawFieldItem(
-                    law_field["Field_ID"],
-                    law_field["LawFieldUrl"],
-                    law_field["Field_Value"],
-                    law_field["Field_Name"],
-                )
-                for law_field in law_fields
-            ]
-
-            # law_organization_ids = self.convert_str_to_list(law["Document"]["OrganIDs"])
-            law_organization_ids = law["Document"]["OrganIDs"]
-            law_type = law["Document"]["LawType"]["LawType_Name"]
             content = law.get("ContentVN", "")
-            question_answer_pair_item_list = [
-                LawQuestionAnswerPairItem(
-                    law_id, bai_viet["Title"], "", bai_viet["Url"]
-                )
-                for bai_viet in question_answer_pair
-            ]
 
             law_item = LawItem(
                 law_id,
                 news_code,
-                subject,
-                description,
-                news_date,
-                news_effect_date,
-                news_effect_less,
-                law_fields,
-                law_organization_ids,
-                question_answer_pair_item_list,
-                law_type,
+                [],
                 content,
             )
         except Exception as e:

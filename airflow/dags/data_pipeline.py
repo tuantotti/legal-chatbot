@@ -4,7 +4,9 @@ import pendulum
 from tasks import extract, load, transform
 
 from airflow.decorators import dag
-
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 @dag(
     dag_id="data-pipeline",
